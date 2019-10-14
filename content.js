@@ -1,136 +1,29 @@
-const IS_DEBUG = false;
+const IS_DEBUG = true;
 var startTime = Date.now();
 var intervalsPassed = 0;
 var parser = new DOMParser();
-var isAudibleCom = false;
 
 function log(message)
 {
     if (IS_DEBUG) console.log(message);
 }
 
-function extractByTerm(searchTerm)
+function getTitle()
 {
-    searchTerm = searchTerm.toUpperCase();
-    var aTags = document.getElementsByTagName("li");
+    var aTags = document.getElementsByTagName("h1");
     let text;
     for (let i = 0; i < aTags.length; i++)
     {
-        if (aTags[i].textContent.toUpperCase()
-            .indexOf(searchTerm) > -1)
-        {
-            text = aTags[i].textContent.toUpperCase()
-                .replace(searchTerm, '')
-                .trim();
+        if (aTags[i].className == "book-title"){
+            text = aTags[i].textContent.trim().replace(/\s+/g, '+');
+            //text = aTags[i].textContent.trim();
             break;
-        }
     }
+}
+    log("found: " + text);
     return text;
 }
 
-function findAsinOrIsbnText()
-{
-    let found = extractByTerm("isbn-10:");
-    if (found === undefined) found = extractByTerm("isbn-13:");
-    if (found === undefined) found = extractByTerm("asin:");
-    log("found: " + found);
-    return found;
-}
-/**
- * Search for the Amazon identification number
- */
-function getASIN()
-{
-    var asin = false;
-    // Audible
-    if (isAudibleCom)
-    {
-        var asinElement = document.getElementById("reviewsAsinUS");
-        if (asinElement === undefined) asinElement = document.getElementsByName("productAsin")[0];
-        if (asinElement === undefined) asinElement = document.querySelectorAll("[data-asin]")[0].getAttribute("data-asin");
-        asin = asinElement === undefined ? false : asinElement.value;
-    }
-    // Amazon
-    else
-    {
-        // Method 1
-        asin = findAsinOrIsbnText();
-        if (asin !== undefined) log("Method 1 asin found: " + asin);
-        // Method 2
-        if (asin === undefined)
-        {
-            var asinElement = document.querySelectorAll('[data-detailpageasin]')[0];
-            if (asinElement !== undefined)
-            {
-                asin = asinElement.getAttribute('data-detailpageasin');
-                log("Method 2 asin found: " + asin);
-            }
-        }
-        // Method 3
-        if (asin === undefined)
-        {
-            // ASIN not found (not Amazon.com), search again by hidden input
-            asin = document.querySelectorAll("input[name*=ASIN]")[0]
-            if (asin !== undefined)
-            {
-                asin = asin.value;
-                log("Method 3 asin found: " + asin);
-            }
-        }
-        // Method 4
-        if (asin === undefined)
-        {
-            asin = document.querySelectorAll('[data-asin]')[0];
-            if (asin !== undefined)
-            {
-                asin = asin.getAttribute('data-asin');
-                log("Method 4 asin found: " + asin);
-            }
-        }
-        // Everything fails, all is lost
-        if (asin === undefined || asin.length === 0 || asin.trim() === "")
-        {
-            log("GoodreadsForAmazon: ASIN not found");
-            return false;
-        }
-    }
-    return asin;
-}
-/**
- * ISBN-10 to ISBN-13 conversor
- * http://www.dispersiondesign.com/articles/isbn/converting_isbn10_to_isbn13
- */
-function isbn10to13(isbn10)
-{
-    log("isbn10to13 : isbn10 = " + isbn10);
-    // Get every char into an array
-    var chars = isbn10.split("");
-    // Prepend 978 code
-    chars.unshift("9", "7", "8");
-    // Remove last check digit from isbn10
-    chars.pop();
-    // Convert to isbn-13
-    var i = 0;
-    var sum = 0;
-    for (i = 0; i < 12; i++)
-    {
-        sum += chars[i] * ((i % 2) ? 3 : 1);
-    }
-    var check_digit = (10 - (sum % 10)) % 10;
-    chars.push(check_digit);
-    // Array back to string
-    var isbn13 = chars.join("");
-    // Conversion failed?
-    if (isbn13.indexOf("NaN") !== -1)
-    {
-        isbn13 = "";
-    }
-    log("isbn13 = " + isbn13);
-    return isbn13;
-}
-/**
- * Sanitizer, removes all html tags, leave text
- */
 var tagBody = '(?:[^"\'>]|"[^"]*"|\'[^\']*\')*';
 var tagOrComment = new RegExp('<(?:'
     // Comment body.
@@ -153,9 +46,9 @@ function removeTags(html)
  * Get book reviews from ASIN number and show rating
  * last = boolean. Checks if is the last recursive pass
  */
-function retrieveBookInfo(asin, last)
+function retrieveBookInfo(title, last)
 {
-    var urlGoodreads = "https://www.goodreads.com/book/isbn?isbn=" + asin;
+    var urlGoodreads = "https://www.goodreads.com/book/title?title=" + title;
     log("Retrieving goodreads info from url: " + urlGoodreads);
     chrome.runtime.sendMessage(
     {
@@ -175,15 +68,6 @@ function retrieveBookInfo(asin, last)
         }
         if (meta.length === 0)
         {
-            // Check once more with isbn13 (in case the asin is really a isbn10)
-            if (last === false)
-            {
-                asin = isbn10to13(asin);
-                if (asin !== "")
-                {
-                    retrieveBookInfo(asin, true);
-                }
-            }
             log("Goodreads info not found for this book");
             return;
         }
@@ -213,7 +97,7 @@ function retrieveBookInfo(asin, last)
         log(votesHtml);
         log(removeTags(votesHtml)
             .trim());
-        // Clean html 
+        // Clean html
         var reviewCount = removeTags(averageHtml)
             .trim() + " from " + removeTags(votesHtml)
             .trim();
@@ -224,66 +108,29 @@ function retrieveBookInfo(asin, last)
             .querySelector("#goodreadsRating");
         // FINALLY APPEND TO PAGE
         log("Span object : " + contentSpan);
-        // Audible.com
-        if (isAudibleCom) AppendToAudible(contentSpan);
-        // Amazon
-        else AppendToAmazon(contentSpan);
+        // Chirp
+        AppendToChirp(contentSpan);
     });
 }
-
-function AppendToAudible(contentSpan)
-{
-    log("AppendToAudible");
-    var ratingsLabel = document.getElementsByClassName("ratingsLabel");
-    if (ratingsLabel.length > 0)
-    {
-        var parentUl = ratingsLabel[0].parentNode;
-        parentUl.insertBefore(contentSpan, ratingsLabel[0]);
-    }
-}
 /**
- * Appends ratings to Amazon page
+ * Appends ratings to Chirp page
  */
-function AppendToAmazon(contentSpan)
+function AppendToChirp(contentSpan)
 {
-    log("AppendToAmazon");
-    // APPEND TO AMAZON PAGE
+    log("AppendToChirp");
+    // APPEND TO Chirp PAGE
     // Get reviews section
-    // NOTE: Amazon is a mess, usually #averageCusomerReviews exists, but sometimes it won't use it
+    // NOTE: Chirp is a mess, usually #averageCusomerReviews exists, but sometimes it won't use it
     // and put the reviews link into #cmrsSummary-popover
-    var amazonReview = document.querySelectorAll("#cmrs-atf, #acrCustomerReviewLink");
-    if (amazonReview.length !== 0)
+    var chirpReview = document.querySelectorAll(".credits");
+    if (chirpReview.length !== 0)
     {
-        amazonReview = amazonReview[0].parentNode;
-        log("amazonReview: " + amazonReview);
+        chirpReview = chirpReview[1];
+        log("chirpReview: " + chirpReview);
     }
-    else
-    {
-        log("GoodreadsForAmazon: #cmrs-atf or #acrCustomerReviewLink not found. Trying with #averageCusomerReviews");
-        amazonReview = document.querySelectorAll("#averageCustomerReviews");
-    }
-    // If not found is not .com and uses different html ¬¬
-    if (amazonReview.length === 0)
-    {
-        var amazonReview = document.querySelectorAll(".buying .crAvgStars");
-        // No crAvgStars, search .buying inside .buying (yes, wtf)
-        if (amazonReview.length === 0)
-        {
-            log("GoodreadsForAmazon: .crAvgStars not found. Trying with .buying");
-            // Here we go... holy shit Amazon, please define the different parts of your pages properly
-            amazonReview = document.querySelectorAll(".buying .tiny a");
-            if (amazonReview.length !== 0)
-            {
-                amazonReview = amazonReview[0].parentNode
-            }
-        }
-    }
-    if (amazonReview[0] !== undefined)
-    {
-        amazonReview = amazonReview[0];
-    }
+
     // Append to reviews
-    amazonReview.appendChild(contentSpan);
+    chirpReview.appendChild(contentSpan);
 }
 /**
  * Check if the current article is a book in any form
@@ -291,27 +138,23 @@ function AppendToAmazon(contentSpan)
 function checkIfBook()
 {
     log("checkIfBook");
-    // Audible
-    if (isAudibleCom) return window.location.href.indexOf("audible.com/pd") > 0;
-    // Amazon
-    return document.getElementById("booksTitle") !== null || document.getElementById("bookEdition") !== null;
+    // Chirp
+    return document.querySelectorAll(".credits") !== null || document.querySelectorAll("book-title") !== null;
 }
 /**
  * START POINT
  */
 // Try to get the book info as soon as possible
+
 var asinFound = false;
 var startTime = Date.now();
-// Check if the domain is Amazon or Audible
-isAudibleCom = window.location.hostname.indexOf("audible.com") > 0;
-log("Comenzando. isAudibleCom = " + isAudibleCom);
 if (checkIfBook())
 {
     var asinChecker = window.setInterval(function()
     {
         intervalsPassed++;
         log("Inverval number " + intervalsPassed);
-        var asin = getASIN();
+        var asin = getTitle();
         // Is ASIN found, stop and retrieve book info
         if (asin !== false)
         { // ASIN found
@@ -337,7 +180,7 @@ if (checkIfBook())
         {
             // Always remove interval (if ASIN not found, should exists)
             window.clearInterval(asinChecker);
-            var asin = getASIN();
+            var asin = getTitle();
             log("Document load asin found? : " + asin);
             if (asin !== false)
             { // ASIN found
