@@ -12,7 +12,7 @@ function getTitle()
 {
     var aTags = document.getElementsByTagName("h1");
     let text;
-    for (let i = 0; i < aTags.length; i++)
+    for (let i = 0; i <= aTags.length; i++)
     {
         if (aTags[i].className == "book-title"){
             text = aTags[i].textContent.trim().replace(/\s+/g, '+');
@@ -74,7 +74,8 @@ function retrieveBookInfo(title, last)
         meta = meta[0];
         // CREATE TAGS
         // Append content
-        var parentSpan = "<br/><span id='goodreadsRating' class='goodreadsRating'>";
+        var parentSpan = "<br/><span class='goodreadsRating'>";
+//        var parentSpan = "<br/><span id='goodreadsRating' class='goodreadsRating'>";
         // Stars
         var stars = meta.querySelectorAll(".stars")[0];
         if (stars === undefined || stars === null)
@@ -103,13 +104,10 @@ function retrieveBookInfo(title, last)
             .trim();
         parentSpan += "<a href='" + urlGoodreads + "'>" + reviewCount + "</a>";
         parentSpan += "</span>";
-        // Parse into html object and select goodreadsRating
-        var contentSpan = parser.parseFromString(parentSpan, "text/html")
-            .querySelector("#goodreadsRating");
         // FINALLY APPEND TO PAGE
-        log("Span object : " + contentSpan);
+        log("Span object : " + parentSpan);
         // Chirp
-        AppendToChirp(contentSpan);
+        AppendToChirp(parentSpan);
     });
 }
 /**
@@ -119,18 +117,18 @@ function AppendToChirp(contentSpan)
 {
     log("AppendToChirp");
     // APPEND TO Chirp PAGE
-    // Get reviews section
-    // NOTE: Chirp is a mess, usually #averageCusomerReviews exists, but sometimes it won't use it
-    // and put the reviews link into #cmrsSummary-popover
+    var test = "<p class='goodreadsRating'>testestst</p>";
     var chirpReview = document.querySelectorAll(".credits");
     if (chirpReview.length !== 0)
     {
-        chirpReview = chirpReview[1];
-        log("chirpReview: " + chirpReview);
+        for (let i = 0; i < chirpReview.length; i++)
+        {
+            log("chirpReview: " + chirpReview[i]);
+            chirpReview[i].insertAdjacentHTML('beforeend', contentSpan)
+        }
     }
 
     // Append to reviews
-    chirpReview.appendChild(contentSpan);
 }
 /**
  * Check if the current article is a book in any form
