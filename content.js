@@ -1,4 +1,4 @@
-const IS_DEBUG = true;
+const IS_DEBUG = false;
 var startTime = Date.now();
 var intervalsPassed = 0;
 var parser = new DOMParser();
