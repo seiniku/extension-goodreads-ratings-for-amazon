@@ -107,7 +107,8 @@ function retrieveBookInfo(title, last)
         // FINALLY APPEND TO PAGE
         log("Span object : " + parentSpan);
         // Chirp
-        AppendToChirp(parentSpan);
+        cleanSpan = Sanitizer.createSafeHTML(parentSpan)
+        AppendToChirp(cleanSpan);
     });
 }
 /**
@@ -117,14 +118,13 @@ function AppendToChirp(contentSpan)
 {
     log("AppendToChirp");
     // APPEND TO Chirp PAGE
-    var test = "<p class='goodreadsRating'>testestst</p>";
     var chirpReview = document.querySelectorAll(".credits");
     if (chirpReview.length !== 0)
     {
         for (let i = 0; i < chirpReview.length; i++)
         {
             log("chirpReview: " + chirpReview[i]);
-            chirpReview[i].insertAdjacentHTML('beforeend', contentSpan)
+            chirpReview[i].insertAdjacentHTML('beforeend', Sanitizer.unwrapSafeHTML(contentSpan));
         }
     }
 
@@ -137,57 +137,60 @@ function checkIfBook()
 {
     log("checkIfBook");
     // Chirp
-    return document.querySelectorAll(".credits") !== null || document.querySelectorAll("book-title") !== null;
+    return document.querySelectorAll(".credits") !== null || document.querySelectorAll(".book-title") !== null;
+    //document.querySelectorAll("a[class^='promotion_card-module__title___']")
 }
 /**
  * START POINT
  */
 // Try to get the book info as soon as possible
 
-var asinFound = false;
-var startTime = Date.now();
-if (checkIfBook())
-{
-    var asinChecker = window.setInterval(function()
+
+
+    var asinFound = false;
+    var startTime = Date.now();
+    if (checkIfBook())
     {
-        intervalsPassed++;
-        log("Inverval number " + intervalsPassed);
-        var asin = getTitle();
-        // Is ASIN found, stop and retrieve book info
-        if (asin !== false)
-        { // ASIN found
-            window.clearInterval(asinChecker);
-            asinFound = true; // No need to check anymore
-            retrieveBookInfo(asin, false);
-        }
-        // After 10 seconds stop checking for ASIN
-        var timeInSeconds = Math.floor((Date.now() - startTime)) / 1000;
-        var stopChecks = timeInSeconds > 10;
-        if (stopChecks === true)
+        var asinChecker = window.setInterval(function()
         {
-            window.clearInterval(asinChecker);
-        }
-    }, 500);
-    /**
-     * After loading page check if ASIN was found or try once more
-     */
-    document.addEventListener("DOMContentLoaded", function()
-    {
-        log("Page loaded in " + (Date.now() - startTime) + " ms");
-        if (!asinFound)
-        {
-            // Always remove interval (if ASIN not found, should exists)
-            window.clearInterval(asinChecker);
+            intervalsPassed++;
+            log("Inverval number " + intervalsPassed);
             var asin = getTitle();
-            log("Document load asin found? : " + asin);
+            // Is ASIN found, stop and retrieve book info
             if (asin !== false)
             { // ASIN found
+                window.clearInterval(asinChecker);
+                asinFound = true; // No need to check anymore
                 retrieveBookInfo(asin, false);
             }
-            else
+            // After 10 seconds stop checking for ASIN
+            var timeInSeconds = Math.floor((Date.now() - startTime)) / 1000;
+            var stopChecks = timeInSeconds > 10;
+            if (stopChecks === true)
             {
-                log("Book not found. THE END.");
+                window.clearInterval(asinChecker);
             }
-        }
-    });
-}
+        }, 500);
+        /**
+         * After loading page check if ASIN was found or try once more
+         */
+        document.addEventListener("DOMContentLoaded", function()
+        {
+            log("Page loaded in " + (Date.now() - startTime) + " ms");
+            if (!asinFound)
+            {
+                // Always remove interval (if ASIN not found, should exists)
+                window.clearInterval(asinChecker);
+                var asin = getTitle();
+                log("Document load asin found? : " + asin);
+                if (asin !== false)
+                { // ASIN found
+                    retrieveBookInfo(asin, false);
+                }
+                else
+                {
+                    log("Book not found. THE END.");
+                }
+            }
+        });
+    }

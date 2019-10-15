@@ -4,7 +4,7 @@
     "short_name": "Goodreads for Chirp",
     "description": "Show Goodreads ratings for books in Chirp.",
     "version": "1.7.3",
-    "permissions": ["*://*.chirpbooks.com/*","https://www.goodreads.com/audiobooks/*"],
+    "permissions": ["*://*.chirpbooks.com/*","https://www.goodreads.com/*"],
     "icons":
     {
         "128": "images/default-128.png"
@@ -15,8 +15,12 @@
     },
     "content_scripts": [
     {
-        "matches": ["*://*.chirpbooks.com/*"],
+        "matches": ["*://*.chirpbooks.com/audiobooks/*"],
         "css": ["content.css"],
-        "js": ["content.js"]
-    }]
+        "js": ["lib/sanitizer.js","app/content.js"]
+    }],
+    "web_accessible_resources": [
+        "app/*",
+        "lib/*"
+    ]
 }
