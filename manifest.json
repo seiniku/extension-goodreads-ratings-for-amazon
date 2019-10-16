@@ -3,7 +3,7 @@
     "name": "Goodreads ratings for Chirp",
     "short_name": "Goodreads for Chirp",
     "description": "Show Goodreads ratings for books in Chirp.",
-    "version": "1.7.3",
+    "version": "1.8.0",
     "permissions": ["*://*.chirpbooks.com/*","https://www.goodreads.com/*"],
     "icons":
     {
