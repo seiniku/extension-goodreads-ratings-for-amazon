@@ -1,3 +1,9 @@
+1.8.0 - 2019.10.16
+- now uses Goodreads API to pull data
+
+1.7.3 - 2019.10.15
+- reworked to work with chirpbooks not amazon
+
 1.7.2 - 2019.03.26
 ------------------
 - Fixes problem with CORB on newest Chrome versions.
@@ -66,15 +72,15 @@
 - Bug Fix. Amazon.com did some changes in the code, ASIN was not found, fixed.
 - Bug Fix. Some non amazon.com pages show the rating in the suggestions section by the wrong book. Improved class specificity when selecting the correct tag.
 - Huge speed improvement when retrieving book info. Now it won't wait for the whole page to finish loading.
- 
+
 1.2 - 2015.10.14
 ----------------
 - Bug Fix. Don't show anything when book is not found.
-- Removes unnecessary content policies from manifest. 
+- Removes unnecessary content policies from manifest.
 
 1.1 - 2015.10.13
 ----------------
-- Bug Fix and manifest permissions. 
+- Bug Fix and manifest permissions.
 
 1.0 - 2015.10.13
 ----------------
