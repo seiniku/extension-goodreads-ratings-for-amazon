@@ -37,21 +37,6 @@ function getTitles(){
 
     return books;
 }
-(function getTitle()
-{
-    var aTags = document.getElementsByTagName("h1");
-    let text;
-    for (let i = 0; i < aTags.length; i++)
-    {
-        if (aTags[i].className == "book-title"){
-            text = aTags[i].textContent.trim().replace(/\s+/g, '+');
-            //text = aTags[i].textContent.trim();
-            break;
-    }
-}
-    log("found: " + text);
-    return text;
-})
 
 /**
  * Changes XML to JSON
@@ -114,12 +99,12 @@ function xmlToJson(xml) {
 
 function retrieveBookInfo(bookObj, last){
     var  key = "C8YwtiqnhcXx4f9RKw5i3Q"
-//    var urlGoodreads = "https://www.goodreads.com/book/title.xml?key=C8YwtiqnhcXx4f9RKw5i3Q&title=" + title;
     var urlGoodreads = "https://www.goodreads.com/book/title.xml?key=C8YwtiqnhcXx4f9RKw5i3Q&title=" + bookObj.get("title") + "&author=" + bookObj.get("author");
-
+    https://www.goodreads.com/book/title?title=The+Ghost+Bride3.76+from+18,118+ratings&author=Yangsze+Choo
     log("url to search is " + urlGoodreads)
-
-    chrome.runtime.sendMessage(
+    if (!(bookObj.get("title").endsWith("+ratings")))
+    {
+      chrome.runtime.sendMessage(
         {
             contentScriptQuery: "fetchHtml",
             url: urlGoodreads
@@ -139,7 +124,7 @@ function retrieveBookInfo(bookObj, last){
             log("info " + info)
             AppendToChirp(info, bookObj);
         }
-)};
+)}};
 
 /**
  * Builds the span that contains what we want to insert into the chirpbooks page
@@ -211,8 +196,6 @@ function AppendToChirp(contentSpan, bookObj)
       }
     }
   }
-
-    // Append to reviews
 }
 /**
  * Check if the current article is a book in any form
@@ -228,6 +211,7 @@ function checkIfBook()
  */
 // Try to get the book info as soon as possible
 
+function doWork(){
 var bookList = false;
 var startTime = Date.now();
 if (checkIfBook())
@@ -250,8 +234,13 @@ if (checkIfBook())
               if (!(isListOfDeals)){
                 i++;
               }
-          };
 
+          };
+          var loadButton = document.querySelector("button[class^='load_more_button'");
+
+          loadButton.addEventListener("click", function(){
+            doWork();
+          }, false);
         }
         // After 10 seconds stop checking for title
 
@@ -285,3 +274,5 @@ if (checkIfBook())
         }
     });
 }
+}
+doWork();
