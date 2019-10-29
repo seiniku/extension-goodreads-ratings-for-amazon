@@ -1,3 +1,6 @@
+1.9.0 - 2019-10-29
+- works on deal page and with loading more deals
+
 1.8.0 - 2019.10.16
 - now uses Goodreads API to pull data
 
