@@ -2,17 +2,46 @@ const IS_DEBUG = false;
 var startTime = Date.now();
 var intervalsPassed = 0;
 var parser = new DOMParser();
+var isListOfDeals = true;
 
 function log(message)
 {
     if (IS_DEBUG) console.log(message);
 }
 
-function getTitle()
+function getTitles(){
+  var aTags = document.querySelectorAll("a[class^='promotion_card-module__title___'")
+  if (aTags.length == 0){
+    isListOfDeals = false;
+    var aTags = document.querySelectorAll(".book-title");
+  }
+  let books = [];
+    for (let i = 0; i < aTags.length; i++)
+    {
+      let book = new Map;
+      let title = aTags[i].textContent.trim().replace(/\s+/g, '+');
+      let classname = aTags[i].className;
+      let author;
+      if (isListOfDeals){
+        author = aTags[i].nextSibling.textContent.trim().replace(/by /, '').replace(/\s+/g, '+');
+
+      } else {
+        author = document.querySelectorAll(".credit-names")[0].textContent.trim().replace(/\s+/g, '+');
+      }
+      book.set("title", title);
+      book.set("classname", classname);
+      book.set("author", author);
+
+      books.push(book);
+    }
+
+    return books;
+}
+(function getTitle()
 {
     var aTags = document.getElementsByTagName("h1");
     let text;
-    for (let i = 0; i <= aTags.length; i++)
+    for (let i = 0; i < aTags.length; i++)
     {
         if (aTags[i].className == "book-title"){
             text = aTags[i].textContent.trim().replace(/\s+/g, '+');
@@ -22,7 +51,7 @@ function getTitle()
 }
     log("found: " + text);
     return text;
-}
+})
 
 /**
  * Changes XML to JSON
@@ -83,10 +112,10 @@ function xmlToJson(xml) {
  * last = boolean. Checks if is the last recursive pass
  */
 
-function retrieveBookInfo(title, last){
+function retrieveBookInfo(bookObj, last){
     var  key = "C8YwtiqnhcXx4f9RKw5i3Q"
 //    var urlGoodreads = "https://www.goodreads.com/book/title.xml?key=C8YwtiqnhcXx4f9RKw5i3Q&title=" + title;
-    var urlGoodreads = "https://www.goodreads.com/book/title.xml?key=C8YwtiqnhcXx4f9RKw5i3Q&title=" + title;
+    var urlGoodreads = "https://www.goodreads.com/book/title.xml?key=C8YwtiqnhcXx4f9RKw5i3Q&title=" + bookObj.get("title") + "&author=" + bookObj.get("author");
 
     log("url to search is " + urlGoodreads)
 
@@ -105,18 +134,18 @@ function retrieveBookInfo(title, last){
             log(stars);
             var reviewCount = jsonresult.GoodreadsResponse.book.work.ratings_count;
             log(reviewCount);
-            } else { log(title + " not found")};
-            var info = buildRatingHTML(title, stars, reviewCount, urlGoodreads);
+            } else { log(bookObj.get("title") + " not found")};
+            var info = buildRatingHTML(bookObj.get("title"), bookObj.get("author"), stars, reviewCount, urlGoodreads);
             log("info " + info)
-            AppendToChirp(info);
+            AppendToChirp(info, bookObj);
         }
 )};
 
 /**
  * Builds the span that contains what we want to insert into the chirpbooks page
  */
-function buildRatingHTML(title, stars, count, url){
-    var urlGoodreads = "https://www.goodreads.com/book/title?title=" + title;
+function buildRatingHTML(title, author, stars, count, url){
+    var urlGoodreads = "https://www.goodreads.com/book/title?title=" + title + "&author=" + author;
 
     var parentSpan = "<br/><span class='goodreadsRating'>";
     parentSpan += "<span class='stars staticStars'>";
@@ -136,7 +165,7 @@ function buildRatingHTML(title, stars, count, url){
                } else {
                 parentSpan += "<span class='staticStar p3' size=12x12></span>";
                }
-                if (i < 0.5){
+                if (i < 5){
                     parentSpan += "<span class='staticStar p0' size=12x12></span>";
                 }
                 fullStars = 0
@@ -155,19 +184,33 @@ function buildRatingHTML(title, stars, count, url){
 /**
  * Appends ratings to Chirp page
  */
-function AppendToChirp(contentSpan)
+function AppendToChirp(contentSpan, bookObj)
 {
-    log("AppendToChirp");
-    // APPEND TO Chirp PAGE
-    var chirpReview = document.querySelectorAll(".credits");
-    if (chirpReview.length !== 0)
-    {
-        for (let i = 0; i < chirpReview.length; i++)
-        {
-            log("chirpReview: " + chirpReview[i]);
-            chirpReview[i].insertAdjacentHTML('beforeend', Sanitizer.unwrapSafeHTML(contentSpan));
+  let className = bookObj.get("classname");
+  let title = bookObj.get("title").replace(/\+/g," ");
+  log("AppendToChirp, " + className);
+  // APPEND TO Chirp PAGE
+  var chirpReview = document.querySelectorAll("." + className);
+  if (chirpReview.length !== 0)
+  {
+    if (isListOfDeals) {
+      for (let i = 0; i < chirpReview.length; i++){
+        log("chirpReview is list: " + chirpReview[i]);
+        if (title == chirpReview[i].textContent){
+          //log("titlematch for " + title)
+          chirpReview[i].insertAdjacentHTML('beforeend', Sanitizer.unwrapSafeHTML(contentSpan));
+        } else {
+          //log ('nomatch for ' + title)
         }
+      }
+    } else {
+      for (let i = 0; i < chirpReview.length; i++)
+      {
+          log("chirpReview: " + chirpReview[i]);
+          chirpReview[i].insertAdjacentHTML('beforeend', Sanitizer.unwrapSafeHTML(contentSpan));
+      }
     }
+  }
 
     // Append to reviews
 }
@@ -177,34 +220,42 @@ function AppendToChirp(contentSpan)
 function checkIfBook()
 {
     log("checkIfBook");
-    return document.querySelectorAll(".credits") !== null || document.querySelectorAll(".book-title") !== null;
-    //document.querySelectorAll("a[class^='promotion_card-module__title___']")
+    return true;
+    return (document.querySelectorAll(".credits").length > 0) || (document.querySelectorAll(".book-title") > 0) || (document.querySelectorAll("a[class^='promotion_card-module__title___'").length > 0);
 }
 /**
  * START POINT
  */
 // Try to get the book info as soon as possible
 
-var titleFound = false;
+var bookList = false;
 var startTime = Date.now();
 if (checkIfBook())
 {
     var titleChecker = window.setInterval(function()
     {
         intervalsPassed++;
-        log("Inverval number " + intervalsPassed);
-        var title = getTitle();
+        //log("Interval number " + intervalsPassed);
+        //var title = getTitle();
+        var bookList = getTitles();
         // Is title found, stop and retrieve book info
-        if (title !== false)
+        if (bookList !== false)
         { // title found
             window.clearInterval(titleChecker);
             titleFound = true;
-            retrieveBookInfo(title,false);
+            for (i=0; i<bookList.length; i++){
+              let title = bookList[i].get('title')
+              log(title);
+              retrieveBookInfo(bookList[i],false);
+              if (!(isListOfDeals)){
+                i++;
+              }
+          };
+
         }
         // After 10 seconds stop checking for title
-        var timeInSeconds = Math.floor((Date.now() - startTime)) / 1000;
-        var stopChecks = timeInSeconds > 10;
-        if (stopChecks === true)
+
+        if (intervalsPassed > 20)
         {
             window.clearInterval(titleChecker);
         }

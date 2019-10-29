@@ -15,7 +15,7 @@
     },
     "content_scripts": [
     {
-        "matches": ["*://*.chirpbooks.com/audiobooks/*"],
+        "matches": ["*://*.chirpbooks.com/audiobooks/*", "*://*.chirpbooks.com/deal*"],
         "css": ["content.css"],
         "js": ["lib/sanitizer.js","app/content.js"]
     }],
